@@ -1,8 +1,10 @@
+
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
 import { generateMovieRiddle, type GenerateMovieRiddleOutput } from "@/ai/flows/generate-movie-riddle";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { HINT_PENALTIES, HINT_TYPES, MAX_HINTS, POINTS_PER_CORRECT_ANSWER, type HintCategory } from "@/lib/constants";
 
@@ -71,7 +73,6 @@ export default function CineSageGame() {
 
   const handleRequestHint = (category: HintCategory) => {
     if (hintsUsedCount < MAX_HINTS && !revealedHints[category] && gameStatus === "playing") {
-      // Check if this is the correct hint to reveal in sequence
       const hintOrder: HintCategory[] = ['CAST', 'YEAR', 'DIRECTOR'];
       if (hintOrder[hintsUsedCount] !== category) {
         toast({ title: "Hint Order", description: "Please reveal hints in order.", variant: "default"});
@@ -95,7 +96,7 @@ export default function CineSageGame() {
     e.preventDefault();
     if (!riddleData || gameStatus !== "playing" || !userAnswer.trim()) return;
 
-    setGameStatus("loading"); // to disable input while checking
+    setGameStatus("loading"); 
 
     const isCorrect = userAnswer.trim().toLowerCase() === riddleData.movieTitle.toLowerCase();
 
@@ -115,13 +116,12 @@ export default function CineSageGame() {
     } else {
       setFeedback({ type: "error", message: "That's not it. Try again or use a hint!" });
       toast({ title: "Incorrect!", description: "Try again or use a hint.", variant: "destructive" });
-      setGameStatus("playing"); // Allow to try again
+      setGameStatus("playing"); 
     }
-    // setUserAnswer(""); // Optionally clear answer after submit, or keep it for retries
   };
 
   const isLoading = gameStatus === "loading" && !riddleData?.riddle;
-  const isSubmitting = gameStatus === "loading" && !!riddleData?.riddle; // Loading while checking answer
+  const isSubmitting = gameStatus === "loading" && !!riddleData?.riddle; 
 
   return (
     <div className="container mx-auto py-8 px-4 flex flex-col items-center">
@@ -129,9 +129,11 @@ export default function CineSageGame() {
         <ScoreDisplay currentScore={currentScore} highScore={highScore} />
         
         {gameStatus === "error" && (
-           <Card className="w-full shadow-lg text-center p-8 bg-destructive/10 border-destructive">
-            <CardTitle className="text-destructive-foreground">Oops! Something went wrong.</CardTitle>
-            <CardContent>
+           <Card className="w-full shadow-lg text-center bg-destructive/10 border-destructive">
+            <CardHeader>
+              <CardTitle className="text-destructive-foreground text-xl">Oops! Something went wrong.</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-2">
               <p className="my-4 text-destructive-foreground/80">We couldn't load a riddle. Please try again.</p>
               <Button onClick={fetchNewRiddle} variant="destructive">
                 <RotateCw className="mr-2 h-4 w-4" /> Try Again
@@ -160,6 +162,7 @@ export default function CineSageGame() {
                   revealedHints={revealedHints}
                   onRequestHint={handleRequestHint}
                   disabled={gameStatus !== "playing"}
+                  riddleData={riddleData}
                 />
               </>
             ) : null}
