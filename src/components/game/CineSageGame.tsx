@@ -13,11 +13,22 @@ import AnswerInput from "./AnswerInput";
 import HintsSection from "./HintsSection";
 import ScoreDisplay from "./ScoreDisplay";
 import FeedbackMessage from "./FeedbackMessage";
+import MovieTitleDisplay from "./MovieTitleDisplay"; // Added
 import { Loader2, RotateCw } from "lucide-react";
 
 type GameStatus = "loading" | "playing" | "answered" | "error";
 
 const HIGH_SCORE_KEY = "cineSageHighScore";
+
+// Helper function to check if all alphabetic characters in the title are revealed
+const checkAllLettersRevealed = (title: string, revealed: Set<string>): boolean => {
+  if (!title) return false;
+  return title
+    .toUpperCase()
+    .split('')
+    .every(char => !char.match(/[A-Z0-9]/) || revealed.has(char)); // Consider letters & numbers for revealing
+};
+
 
 export default function CineSageGame() {
   const [riddleData, setRiddleData] = useState<GenerateMovieRiddleOutput | null>(null);
@@ -34,6 +45,8 @@ export default function CineSageGame() {
   const [gameStatus, setGameStatus] = useState<GameStatus>("loading");
   const [feedback, setFeedback] = useState<{type: "success" | "error" | "info" | null, message: string | null}>({ type: null, message: null });
   
+  const [revealedLetters, setRevealedLetters] = useState<Set<string>>(new Set()); // For letter guessing
+
   const { toast } = useToast();
 
   useEffect(() => {
@@ -50,6 +63,7 @@ export default function CineSageGame() {
     setRevealedHints({ CAST: false, YEAR: false, DIRECTOR: false });
     setCurrentHintPenalty(0);
     setFeedback({ type: null, message: null });
+    setRevealedLetters(new Set()); // Reset revealed letters
   };
 
   const fetchNewRiddle = useCallback(async () => {
@@ -58,6 +72,16 @@ export default function CineSageGame() {
     try {
       const newRiddle = await generateMovieRiddle({ difficulty: "hard" });
       setRiddleData(newRiddle);
+      // Pre-reveal non-alpha-numeric characters for the new riddle
+      const initialRevealed = new Set<string>();
+      if (newRiddle && newRiddle.movieTitle) {
+        newRiddle.movieTitle.toUpperCase().split('').forEach(char => {
+          if (!char.match(/[A-Z0-9]/)) { // If char is not a letter or digit
+            initialRevealed.add(char);
+          }
+        });
+      }
+      setRevealedLetters(initialRevealed);
       setGameStatus("playing");
     } catch (error) {
       console.error("Failed to generate riddle:", error);
@@ -67,9 +91,25 @@ export default function CineSageGame() {
         variant: "destructive",
       });
       setGameStatus("error");
-      setRiddleData(null); // Clear riddle data on error
+      setRiddleData(null);
     }
   }, [toast]);
+
+  const handleGameWon = () => {
+    if (!riddleData) return;
+    const pointsEarned = POINTS_PER_CORRECT_ANSWER - currentHintPenalty;
+    const newScore = currentScore + pointsEarned;
+    setCurrentScore(newScore);
+    
+    if (newScore > highScore) {
+      setHighScore(newScore);
+      localStorage.setItem(HIGH_SCORE_KEY, newScore.toString());
+    }
+    
+    setFeedback({ type: "success", message: `You earned ${pointsEarned} points! The movie was "${riddleData.movieTitle}".` });
+    toast({ title: "Correct!", description: `The movie was: ${riddleData.movieTitle}. You earned ${pointsEarned} points!`, variant: "default" });
+    setGameStatus("answered");
+  };
 
   const handleRequestHint = (category: HintCategory) => {
     if (hintsUsedCount < MAX_HINTS && !revealedHints[category] && gameStatus === "playing") {
@@ -96,32 +136,55 @@ export default function CineSageGame() {
     e.preventDefault();
     if (!riddleData || gameStatus !== "playing" || !userAnswer.trim()) return;
 
-    setGameStatus("loading"); 
+    setGameStatus("loading"); // Set to loading for processing
 
-    const isCorrect = userAnswer.trim().toLowerCase() === riddleData.movieTitle.toLowerCase();
+    const guess = userAnswer.trim().toUpperCase();
+    setUserAnswer(""); // Clear input after submission attempt
 
-    if (isCorrect) {
-      const pointsEarned = POINTS_PER_CORRECT_ANSWER - currentHintPenalty;
-      const newScore = currentScore + pointsEarned;
-      setCurrentScore(newScore);
-      
-      if (newScore > highScore) {
-        setHighScore(newScore);
-        localStorage.setItem(HIGH_SCORE_KEY, newScore.toString());
+    // Letter Guess
+    if (guess.length === 1 && guess.match(/[A-Z0-9]/)) {
+      const letter = guess;
+      if (revealedLetters.has(letter)) {
+        toast({ title: "Already Guessed", description: `You've already tried the letter '${letter}'.`, variant: "default" });
+        setGameStatus("playing");
+        return;
       }
-      
-      setFeedback({ type: "success", message: `You earned ${pointsEarned} points! The movie was "${riddleData.movieTitle}".` });
-      toast({ title: "Correct!", description: `The movie was: ${riddleData.movieTitle}. You earned ${pointsEarned} points!`, variant: "default" });
-      setGameStatus("answered");
-    } else {
-      setFeedback({ type: "error", message: "That's not it. Try again or use a hint!" });
-      toast({ title: "Incorrect!", description: "Try again or use a hint.", variant: "destructive" });
-      setGameStatus("playing"); 
+
+      const newRevealedLetters = new Set(revealedLetters);
+      newRevealedLetters.add(letter);
+      setRevealedLetters(newRevealedLetters);
+
+      if (riddleData.movieTitle.toUpperCase().includes(letter)) {
+        toast({ title: "Good Guess!", description: `The letter '${letter}' is in the title.`, variant: "default" });
+        if (checkAllLettersRevealed(riddleData.movieTitle, newRevealedLetters)) {
+          handleGameWon();
+        } else {
+          setGameStatus("playing");
+        }
+      } else {
+        toast({ title: "Incorrect Letter", description: `The letter '${letter}' is not in the title.`, variant: "destructive" });
+        setGameStatus("playing");
+      }
+    } 
+    // Full Title Guess
+    else {
+      if (guess === riddleData.movieTitle.toUpperCase()) {
+        // Reveal all letters if full title guessed correctly
+        const allRevealed = new Set<string>();
+        riddleData.movieTitle.toUpperCase().split('').forEach(char => allRevealed.add(char));
+        setRevealedLetters(allRevealed);
+        handleGameWon();
+      } else {
+        setFeedback({ type: "error", message: "That's not the full title. Try guessing letters or check your spelling!" });
+        toast({ title: "Incorrect Title", description: "That's not the correct movie title.", variant: "destructive" });
+        setGameStatus("playing");
+      }
     }
   };
 
   const isLoading = gameStatus === "loading" && !riddleData?.riddle;
-  const isSubmitting = gameStatus === "loading" && !!riddleData?.riddle; 
+  const isSubmitting = gameStatus === "loading" && !!riddleData?.riddle;
+  const isAnswered = gameStatus === "answered";
 
   return (
     <div className="container mx-auto py-8 px-4 flex flex-col items-center">
@@ -146,32 +209,44 @@ export default function CineSageGame() {
           <>
             <RiddleDisplay riddle={riddleData?.riddle ?? null} isLoading={isLoading} />
             
-            {feedback.message && <FeedbackMessage type={feedback.type} message={feedback.message} />}
+            {/* Display for movie title blanks */}
+            {riddleData?.movieTitle && gameStatus !== "loading" && (
+              <MovieTitleDisplay title={riddleData.movieTitle} revealedLetters={revealedLetters} />
+            )}
 
-            {gameStatus === "playing" || (gameStatus === "loading" && !!riddleData?.riddle) ? (
+            {feedback.message && gameStatus === "answered" && <FeedbackMessage type={feedback.type} message={feedback.message} />}
+
+            {gameStatus === "playing" || isSubmitting ? (
               <>
                 <AnswerInput
                   userAnswer={userAnswer}
                   setUserAnswer={setUserAnswer}
                   onSubmit={handleSubmitAnswer}
-                  disabled={gameStatus !== "playing"}
+                  disabled={isAnswered || gameStatus !== "playing"}
                   isSubmitting={isSubmitting}
                 />
                 <HintsSection
                   hintsUsedCount={hintsUsedCount}
                   revealedHints={revealedHints}
                   onRequestHint={handleRequestHint}
-                  disabled={gameStatus !== "playing"}
+                  disabled={isAnswered || gameStatus !== "playing"}
                   riddleData={riddleData}
                 />
               </>
             ) : null}
 
-            {gameStatus === "answered" && (
+            {isAnswered && (
               <Button onClick={fetchNewRiddle} className="w-full" variant="secondary">
                 {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RotateCw className="mr-2 h-4 w-4" />}
                 {isLoading ? "Loading..." : "Next Riddle"}
               </Button>
+            )}
+            
+            {/* Show loader when fetching new riddle and no riddle data is present */}
+            {isLoading && !riddleData?.riddle && (
+                <div className="flex justify-center items-center py-10">
+                    <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                </div>
             )}
           </>
         )}
