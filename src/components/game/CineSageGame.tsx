@@ -6,27 +6,26 @@ import { generateMovieRiddle, type GenerateMovieRiddleOutput } from "@/ai/flows/
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { HINT_PENALTIES, HINT_TYPES, MAX_HINTS, POINTS_PER_CORRECT_ANSWER, type HintCategory } from "@/lib/constants";
+import { HINT_TYPES, MAX_HINTS, POINTS_PER_CORRECT_ANSWER, type HintCategory } from "@/lib/constants";
 
 import RiddleDisplay from "./RiddleDisplay";
 import AnswerInput from "./AnswerInput";
 import HintsSection from "./HintsSection";
 import ScoreDisplay from "./ScoreDisplay";
 import FeedbackMessage from "./FeedbackMessage";
-import MovieTitleDisplay from "./MovieTitleDisplay"; // Added
+import MovieTitleDisplay from "./MovieTitleDisplay";
 import { Loader2, RotateCw } from "lucide-react";
 
 type GameStatus = "loading" | "playing" | "answered" | "error";
 
 const HIGH_SCORE_KEY = "cineSageHighScore";
 
-// Helper function to check if all alphabetic characters in the title are revealed
 const checkAllLettersRevealed = (title: string, revealed: Set<string>): boolean => {
   if (!title) return false;
   return title
     .toUpperCase()
     .split('')
-    .every(char => !char.match(/[A-Z0-9]/) || revealed.has(char)); // Consider letters & numbers for revealing
+    .every(char => !char.match(/[A-Z0-9]/) || revealed.has(char));
 };
 
 
@@ -45,7 +44,7 @@ export default function CineSageGame() {
   const [gameStatus, setGameStatus] = useState<GameStatus>("loading");
   const [feedback, setFeedback] = useState<{type: "success" | "error" | "info" | null, message: string | null}>({ type: null, message: null });
   
-  const [revealedLetters, setRevealedLetters] = useState<Set<string>>(new Set()); // For letter guessing
+  const [revealedLetters, setRevealedLetters] = useState<Set<string>>(new Set());
 
   const { toast } = useToast();
 
@@ -63,20 +62,20 @@ export default function CineSageGame() {
     setRevealedHints({ CAST: false, YEAR: false, DIRECTOR: false });
     setCurrentHintPenalty(0);
     setFeedback({ type: null, message: null });
-    setRevealedLetters(new Set()); // Reset revealed letters
+    setRevealedLetters(new Set());
   };
 
   const fetchNewRiddle = useCallback(async () => {
     setGameStatus("loading");
     resetForNewRiddle();
     try {
-      const newRiddle = await generateMovieRiddle({ difficulty: "hard" });
+      // Fetching a difficult riddle as requested
+      const newRiddle = await generateMovieRiddle({ difficulty: "expert" }); 
       setRiddleData(newRiddle);
-      // Pre-reveal non-alpha-numeric characters for the new riddle
       const initialRevealed = new Set<string>();
       if (newRiddle && newRiddle.movieTitle) {
         newRiddle.movieTitle.toUpperCase().split('').forEach(char => {
-          if (!char.match(/[A-Z0-9]/)) { // If char is not a letter or digit
+          if (!char.match(/[A-Z0-9]/)) {
             initialRevealed.add(char);
           }
         });
@@ -115,7 +114,7 @@ export default function CineSageGame() {
     if (hintsUsedCount < MAX_HINTS && !revealedHints[category] && gameStatus === "playing") {
       const hintOrder: HintCategory[] = ['CAST', 'YEAR', 'DIRECTOR'];
       if (hintOrder[hintsUsedCount] !== category) {
-        toast({ title: "Hint Order", description: "Please reveal hints in order.", variant: "default"});
+        toast({ title: "Hint Order", description: "Please reveal hints in order (Cast, then Year, then Director).", variant: "default"});
         return;
       }
 
@@ -127,7 +126,7 @@ export default function CineSageGame() {
       
       toast({
         title: `Hint Revealed: ${HINT_TYPES[category].label}`,
-        description: `-${penalty} points applied.`,
+        description: `${HINT_TYPES[category].getHintText?.(riddleData) ?? ''} (-${penalty} points applied).`,
       });
     }
   };
@@ -136,12 +135,11 @@ export default function CineSageGame() {
     e.preventDefault();
     if (!riddleData || gameStatus !== "playing" || !userAnswer.trim()) return;
 
-    setGameStatus("loading"); // Set to loading for processing
+    setGameStatus("loading"); 
 
     const guess = userAnswer.trim().toUpperCase();
-    setUserAnswer(""); // Clear input after submission attempt
+    setUserAnswer(""); 
 
-    // Letter Guess
     if (guess.length === 1 && guess.match(/[A-Z0-9]/)) {
       const letter = guess;
       if (revealedLetters.has(letter)) {
@@ -166,10 +164,8 @@ export default function CineSageGame() {
         setGameStatus("playing");
       }
     } 
-    // Full Title Guess
     else {
       if (guess === riddleData.movieTitle.toUpperCase()) {
-        // Reveal all letters if full title guessed correctly
         const allRevealed = new Set<string>();
         riddleData.movieTitle.toUpperCase().split('').forEach(char => allRevealed.add(char));
         setRevealedLetters(allRevealed);
@@ -182,8 +178,8 @@ export default function CineSageGame() {
     }
   };
 
-  const isLoading = gameStatus === "loading" && !riddleData?.riddle;
-  const isSubmitting = gameStatus === "loading" && !!riddleData?.riddle;
+  const isLoadingInitial = gameStatus === "loading" && !riddleData?.riddle;
+  const isSubmittingAnswer = gameStatus === "loading" && !!riddleData?.riddle;
   const isAnswered = gameStatus === "answered";
 
   return (
@@ -207,23 +203,23 @@ export default function CineSageGame() {
 
         {gameStatus !== "error" && (
           <>
-            <RiddleDisplay riddle={riddleData?.riddle ?? null} isLoading={isLoading} />
+            <RiddleDisplay riddle={riddleData?.riddle ?? null} isLoading={isLoadingInitial} />
             
-            {/* Display for movie title blanks */}
             {riddleData?.movieTitle && gameStatus !== "loading" && (
               <MovieTitleDisplay title={riddleData.movieTitle} revealedLetters={revealedLetters} />
             )}
 
-            {feedback.message && gameStatus === "answered" && <FeedbackMessage type={feedback.type} message={feedback.message} />}
+            {feedback.message && (gameStatus === "answered" || feedback.type === "error" && gameStatus === "playing") && <FeedbackMessage type={feedback.type} message={feedback.message} />}
 
-            {gameStatus === "playing" || isSubmitting ? (
+
+            {gameStatus === "playing" || isSubmittingAnswer ? (
               <>
                 <AnswerInput
                   userAnswer={userAnswer}
                   setUserAnswer={setUserAnswer}
                   onSubmit={handleSubmitAnswer}
                   disabled={isAnswered || gameStatus !== "playing"}
-                  isSubmitting={isSubmitting}
+                  isSubmitting={isSubmittingAnswer}
                 />
                 <HintsSection
                   hintsUsedCount={hintsUsedCount}
@@ -237,13 +233,12 @@ export default function CineSageGame() {
 
             {isAnswered && (
               <Button onClick={fetchNewRiddle} className="w-full" variant="secondary">
-                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RotateCw className="mr-2 h-4 w-4" />}
-                {isLoading ? "Loading..." : "Next Riddle"}
+                {isLoadingInitial ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RotateCw className="mr-2 h-4 w-4" />}
+                {isLoadingInitial ? "Loading..." : "Next Riddle"}
               </Button>
             )}
             
-            {/* Show loader when fetching new riddle and no riddle data is present */}
-            {isLoading && !riddleData?.riddle && (
+            {isLoadingInitial && (
                 <div className="flex justify-center items-center py-10">
                     <Loader2 className="h-12 w-12 animate-spin text-primary" />
                 </div>

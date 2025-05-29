@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Geist } from 'next/font/google'; // Geist_Mono removed as not explicitly used
+import { Geist } from 'next/font/google';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import Header from '@/components/layout/Header';
@@ -11,7 +11,7 @@ const geistSans = Geist({
 
 export const metadata: Metadata = {
   title: 'CineSage - The Ultimate Movie Riddle Game',
-  description: 'Challenge your movie knowledge with AI-generated riddles.',
+  description: 'Challenge your movie knowledge with AI-generated difficult riddles.',
 };
 
 export default function RootLayout({

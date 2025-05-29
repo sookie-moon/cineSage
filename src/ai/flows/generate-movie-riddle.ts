@@ -15,7 +15,7 @@ import {z} from 'genkit';
 
 const GenerateMovieRiddleInputSchema = z.object({
   difficulty: z
-    .enum(['easy', 'medium', 'hard'])
+    .enum(['easy', 'medium', 'hard', 'expert']) // Added expert for more difficulty
     .describe('The difficulty level of the movie riddle.'),
 });
 
@@ -41,6 +41,7 @@ const prompt = ai.definePrompt({
   output: {schema: GenerateMovieRiddleOutputSchema},
   prompt: `You are an expert movie riddle creator. Your task is to generate a challenging movie riddle based on the specified difficulty level.
 The riddle should be creative, engaging, and require a deep understanding of movie plots, characters, and trivia.
+For 'hard' or 'expert' difficulty, make the riddle significantly more obscure, indirect, or based on subtle details of the movie.
 
 Also provide the following information for the movie, ensuring it matches the schema requirements:
 - The movie title.

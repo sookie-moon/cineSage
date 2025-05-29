@@ -21,12 +21,12 @@ export default function MovieTitleDisplay({ title, revealedLetters }: MovieTitle
     .split('')
     .map((char) => {
       if (char === ' ') {
-        return ' '; // Keep spaces as spaces
+        return ' '; 
       }
-      if (char.match(/[a-zA-Z0-9]/)) { // Reveal letters and numbers
+      if (char.match(/[a-zA-Z0-9]/)) { 
         return revealedLetters.has(char.toUpperCase()) ? char : '_';
       }
-      return char; // Keep other characters like punctuation as they are (they are revealed by default)
+      return char; 
     })
     .join('');
 

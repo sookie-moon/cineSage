@@ -4,7 +4,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Send, Type } from "lucide-react"; // Added Type for letter guess indication
+import { Send, Type } from "lucide-react";
 import type React from "react";
 
 interface AnswerInputProps {
@@ -41,7 +41,7 @@ export default function AnswerInput({
           placeholder="Enter a letter or the full movie title..."
           disabled={disabled || isSubmitting}
           className="text-base"
-          maxLength={50} // Reasonable max length for titles or single letters
+          maxLength={50} 
         />
       </div>
       <Button 

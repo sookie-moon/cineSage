@@ -31,20 +31,6 @@ export default function HintsSection({
 }: HintsSectionProps) {
   const canRequestMoreHints = hintsUsedCount < MAX_HINTS;
 
-  const getHintText = (category: HintCategory): string | null => {
-    if (!riddleData) return null;
-    switch (category) {
-      case "CAST":
-        return `Cast includes: ${riddleData.cast.join(', ')}`;
-      case "YEAR":
-        return `Released in: ${riddleData.year}`;
-      case "DIRECTOR":
-        return `Directed by: ${riddleData.director}`;
-      default:
-        return null;
-    }
-  };
-
   return (
     <Card className="shadow-md">
       <CardHeader>
@@ -53,7 +39,7 @@ export default function HintsSection({
           Hints
         </CardTitle>
         <CardDescription>
-          Each hint will cost points. Up to {MAX_HINTS} hints available.
+          Each hint will cost points. Up to {MAX_HINTS} hints available. Reveal in order: Cast, Year, Director.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -62,7 +48,7 @@ export default function HintsSection({
           const hintDetails = HINT_TYPES[category];
           const isHintRevealed = revealedHints[category];
           const canRevealThisHint = index === hintsUsedCount;
-          const hintText = getHintText(category);
+          const hintText = hintDetails.getHintText ? hintDetails.getHintText(riddleData) : null;
 
           return (
             <div key={category} className="flex flex-col gap-2 p-3 border rounded-md bg-secondary/30">
@@ -91,7 +77,7 @@ export default function HintsSection({
               {isHintRevealed && hintText && (
                  <p className="text-sm text-foreground italic pl-0 sm:pl-7 mt-1 sm:mt-0">{hintText}</p>
               )}
-               {!isHintRevealed && !canRevealThisHint && index < MAX_HINTS && (
+               {!isHintRevealed && !canRevealThisHint && index < MAX_HINTS && hintsUsedCount < index && (
                  <p className="text-sm text-muted-foreground italic pl-0 sm:pl-7 mt-1 sm:mt-0">Reveal previous hints first.</p>
               )}
             </div>

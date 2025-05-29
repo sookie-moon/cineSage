@@ -13,7 +13,7 @@ export default function RiddleDisplay({ riddle, isLoading }: RiddleDisplayProps)
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-xl md:text-2xl">
           <Puzzle className="h-6 w-6 text-primary" />
-          <span>Solve the Riddle</span>
+          <span>Solve the Movie Riddle</span>
         </CardTitle>
       </CardHeader>
       <CardContent className="min-h-[100px]">
@@ -25,7 +25,7 @@ export default function RiddleDisplay({ riddle, isLoading }: RiddleDisplayProps)
           </div>
         ) : (
           <p className="text-lg leading-relaxed whitespace-pre-wrap">
-            {riddle || "No riddle loaded yet. Click 'New Riddle' to start!"}
+            {riddle || "No riddle loaded yet. Click 'Next Riddle' to start!"}
           </p>
         )}
       </CardContent>
