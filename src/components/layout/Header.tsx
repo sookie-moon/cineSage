@@ -7,7 +7,7 @@ export default function Header() {
       <div className="container mx-auto flex items-center gap-2">
         <Clapperboard className="h-8 w-8 text-primary" />
         <Link href="/" className="text-2xl font-bold tracking-tight text-foreground hover:text-primary transition-colors">
-          CineSage
+          CineSage with Jisook
         </Link>
       </div>
     </header>
